@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13
+    container_name: passion_detection_db
+    environment:
+      POSTGRES_DB: passion_detection
+      POSTGRES_USER: passion_user
+      POSTGRES_PASSWORD: passion_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - passion_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: passion_detection_backend
+    environment:
+      - DATABASE_URL=postgresql://passion_user:passion_password@postgres:5432/passion_detection
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=["http://localhost:3000", "http://localhost:3001"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+      - backend_models:/app/ml_models
+    networks:
+      - passion_network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: passion_detection_frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - passion_network
+    command: npm start
+
+volumes:
+  postgres_data:
+  backend_uploads:
+  backend_models:
+
+networks:
+  passion_network:
+    driver: bridge 
