@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple script to create database tables
+Create database tables and seed initial data
 """
 
 import sys
@@ -10,33 +10,42 @@ from pathlib import Path
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
-from app.core.database import Base, engine
+from app.core.database import engine, SessionLocal
 from app.models.user import User
 from app.models.child import Child
 from app.models.game import Game
+from app.models.question import Question, QuestionResponse, TalentAssessment
 from app.models.session import GameSession
 from app.models.passion import PassionDomain, PassionInsight
+from passlib.context import CryptContext
 
 def create_tables():
     """Create all database tables"""
     print("Creating database tables...")
     
     try:
+        # Import all models to ensure they're registered
+        from app.models.user import Base
+        from app.models.child import Base
+        from app.models.game import Base
+        from app.models.question import Base
+        from app.models.session import Base
+        from app.models.passion import Base
+        
+        # Create tables
         Base.metadata.create_all(bind=engine)
         print("✅ All tables created successfully!")
         return True
+        
     except Exception as e:
         print(f"❌ Error creating tables: {e}")
         return False
 
 def create_admin_user():
-    """Create a default admin user"""
+    """Create admin user"""
     print("Creating admin user...")
     
     try:
-        from app.core.database import SessionLocal
-        from passlib.context import CryptContext
-        
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         
         def get_password_hash(password: str) -> str:
@@ -58,6 +67,7 @@ def create_admin_user():
             full_name="System Administrator",
             hashed_password=get_password_hash("admin123"),
             is_admin=True,
+            is_parent=True,
             is_active=True
         )
         
@@ -142,6 +152,36 @@ def seed_sample_games():
                 estimated_duration=18,
                 passion_domains=["language_communication", "art_creativity"],
                 is_active=True
+            ),
+            Game(
+                name="Team Builder",
+                description="Work together with friends to solve challenges",
+                category="social",
+                config={"type": "collaborative", "difficulty": "medium"},
+                age_range={"min": 5, "max": 10},
+                estimated_duration=15,
+                passion_domains=["leadership_social"],
+                is_active=True
+            ),
+            Game(
+                name="Math Adventure",
+                description="Learn math through fun interactive games",
+                category="education",
+                config={"type": "learning", "difficulty": "easy"},
+                age_range={"min": 4, "max": 8},
+                estimated_duration=12,
+                passion_domains=["logic_mathematics"],
+                is_active=True
+            ),
+            Game(
+                name="Tech Explorer",
+                description="Learn about technology and coding basics",
+                category="technology",
+                config={"type": "learning", "difficulty": "hard"},
+                age_range={"min": 7, "max": 12},
+                estimated_duration=25,
+                passion_domains=["technology_innovation"],
+                is_active=True
             )
         ]
         
@@ -151,42 +191,73 @@ def seed_sample_games():
         db.commit()
         db.close()
         
-        print(f"✅ {len(sample_games)} sample games created successfully!")
+        print(f"✅ Added {len(sample_games)} sample games")
         return True
         
     except Exception as e:
-        print(f"❌ Error seeding sample games: {e}")
+        print(f"❌ Error seeding games: {e}")
         db.close()
         return False
 
+def seed_sample_questions():
+    """Seed sample questions for talent detection"""
+    print("Seeding sample questions...")
+    
+    try:
+        from app.core.database import SessionLocal
+        
+        db = SessionLocal()
+        
+        # Check if questions already exist
+        existing_questions = db.query(Question).count()
+        if existing_questions > 0:
+            print("✅ Sample questions already exist")
+            db.close()
+            return True
+        
+        # Import the seed_questions function
+        from seed_questions import seed_questions
+        return seed_questions()
+        
+    except Exception as e:
+        print(f"❌ Error seeding questions: {e}")
+        return False
+
 def main():
-    """Main function"""
+    """Main function to set up the database"""
     print("=" * 60)
     print("Passion Detection AI - Table Creation")
     print("=" * 60)
     
-    # Step 1: Create tables
+    # Create tables
     if not create_tables():
-        sys.exit(1)
+        return False
     
-    # Step 2: Create admin user
+    # Create admin user
     if not create_admin_user():
-        sys.exit(1)
+        return False
     
-    # Step 3: Seed sample games
+    # Seed sample games
     if not seed_sample_games():
-        sys.exit(1)
+        return False
+    
+    # Seed sample questions
+    if not seed_sample_questions():
+        return False
     
     print("\n" + "=" * 60)
     print("🎉 Database setup completed successfully!")
     print("=" * 60)
+    
     print("\nYou can now:")
     print("1. Start the FastAPI server: uvicorn main:app --reload")
     print("2. Access the API documentation: http://localhost:8000/docs")
     print("3. Login with admin credentials:")
     print("   Email: admin@passiondetection.com")
     print("   Password: admin123")
+    
     print("\nHappy coding! 🚀")
+    return True
 
 if __name__ == "__main__":
     main() 

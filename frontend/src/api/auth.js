@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8001/api/v1',
+  baseURL: '/api/v1', // Use relative path for proxy
   headers: {
     'Content-Type': 'application/json',
   },

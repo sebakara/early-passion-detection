@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Auth Test</title>
+</head>
+<body>
+    <h1>Frontend Authentication Test</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testChildren()">Test Children</button>
+    <div id="output"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8001/api/v1';
+        
+        async function testLogin() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Testing login...<br>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', 'admin@passiondetection.com');
+                formData.append('password', 'admin123');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.access_token);
+                    output.innerHTML += `✅ Login successful! Token: ${data.access_token.substring(0, 20)}...<br>`;
+                } else {
+                    output.innerHTML += `❌ Login failed: ${response.status}<br>`;
+                }
+            } catch (error) {
+                output.innerHTML += `❌ Error: ${error.message}<br>`;
+            }
+        }
+        
+        async function testChildren() {
+            const output = document.getElementById('output');
+            output.innerHTML += 'Testing children endpoint...<br>';
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    output.innerHTML += '❌ No token found. Please login first.<br>';
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/children`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    output.innerHTML += `✅ Children endpoint working! Found ${data.length} children<br>`;
+                } else {
+                    const errorText = await response.text();
+                    output.innerHTML += `❌ Children failed: ${response.status} - ${errorText}<br>`;
+                }
+            } catch (error) {
+                output.innerHTML += `❌ Error: ${error.message}<br>`;
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -9,6 +9,14 @@ module.exports = function(app) {
       pathRewrite: {
         '^/api': '/api', // Keep the /api prefix
       },
+      onError: (err, req, res) => {
+        console.error('Proxy error:', err);
+        res.writeHead(500, {
+          'Content-Type': 'text/plain',
+        });
+        res.end('Proxy error: ' + err.message);
+      },
+      logLevel: 'debug'
     })
   );
 }; 

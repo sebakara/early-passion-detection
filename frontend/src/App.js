@@ -1,13 +1,11 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Toaster } from 'react-hot-toast';
 
-// Components
+import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import LoadingSpinner from './components/LoadingSpinner';
-
-// Pages
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -18,234 +16,37 @@ import GamePlayPage from './pages/GamePlayPage';
 import PassionsPage from './pages/PassionsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ProfilePage from './pages/ProfilePage';
+import TalentAssessmentPage from './pages/TalentAssessmentPage';
 
-// Context
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+const queryClient = new QueryClient();
 
-// API
-import { checkAuthStatus } from './api/auth';
-
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-  
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-// App Routes Component
-const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
-  
+function App() {
   return (
-    <AnimatePresence mode="wait">
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/" 
-          element={
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <HomePage />
-            </motion.div>
-          } 
-        />
-        <Route 
-          path="/login" 
-          element={
-            isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <LoginPage />
-              </motion.div>
-            )
-          } 
-        />
-        <Route 
-          path="/register" 
-          element={
-            isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <RegisterPage />
-              </motion.div>
-            )
-          } 
-        />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <DashboardPage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/children" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <ChildrenPage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/games" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <GamesPage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/games/:gameId/play" 
-          element={
-            <ProtectedRoute>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-              >
-                <GamePlayPage />
-              </motion.div>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/passions" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <PassionsPage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/analytics" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <AnalyticsPage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <ProfilePage />
-                </motion.div>
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* 404 Route */}
-        <Route 
-          path="*" 
-          element={
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="min-h-screen flex items-center justify-center"
-            >
-              <div className="text-center">
-                <h1 className="text-6xl font-bold text-gray-300 mb-4">404</h1>
-                <p className="text-xl text-gray-600 mb-8">Page not found</p>
-                <button 
-                  onClick={() => window.history.back()}
-                  className="btn btn-primary"
-                >
-                  Go Back
-                </button>
-              </div>
-            </motion.div>
-          } 
-        />
-      </Routes>
-    </AnimatePresence>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <Toaster position="top-right" />
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/dashboard" element={<Layout><DashboardPage /></Layout>} />
+                <Route path="/children" element={<Layout><ChildrenPage /></Layout>} />
+                <Route path="/games" element={<Layout><GamesPage /></Layout>} />
+                <Route path="/game-play" element={<Layout><GamePlayPage /></Layout>} />
+                <Route path="/passions" element={<Layout><PassionsPage /></Layout>} />
+                <Route path="/analytics" element={<Layout><AnalyticsPage /></Layout>} />
+                <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
+                <Route path="/assessment" element={<Layout><TalentAssessmentPage /></Layout>} />
+              </Routes>
+            </AnimatePresence>
+          </div>
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
-};
-
-// Main App Component
-const App = () => {
-  return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
-  );
-};
+}
 
 export default App; 

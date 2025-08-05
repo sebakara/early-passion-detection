@@ -152,22 +152,16 @@ export const AuthProvider = ({ children }) => {
       const response = await registerUser(userData);
       console.log('Registration response:', response);
       
-      const { access_token, user } = response;
+      // After successful registration, automatically log in the user
+      const loginResponse = await loginUser(userData.email, userData.password);
+      const { access_token, user } = loginResponse;
       
-      // If no token returned, just store the user info
-      if (access_token) {
-        localStorage.setItem('token', access_token);
-        dispatch({
-          type: AUTH_ACTIONS.REGISTER_SUCCESS,
-          payload: { user, token: access_token }
-        });
-      } else {
-        // Registration successful but no token - user needs to login
-        dispatch({
-          type: AUTH_ACTIONS.REGISTER_SUCCESS,
-          payload: { user, token: null }
-        });
-      }
+      localStorage.setItem('token', access_token);
+      
+      dispatch({
+        type: AUTH_ACTIONS.REGISTER_SUCCESS,
+        payload: { user, token: access_token }
+      });
       
       return { success: true };
     } catch (error) {
@@ -188,6 +182,7 @@ export const AuthProvider = ({ children }) => {
         type: AUTH_ACTIONS.REGISTER_FAILURE,
         payload: errorMessage
       });
+      
       return { success: false, error: errorMessage };
     }
   };

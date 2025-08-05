@@ -9,7 +9,335 @@ import os
 from app.models.session import GameSession
 from app.models.passion import PassionDomain, PassionInsight
 from app.models.game import Game
+from app.models.question import QuestionResponse
+from app.models.child import Child
 from app.core.config import settings
+
+# Talent domain definitions with characteristics
+TALENT_DOMAINS = {
+    "artistic_creativity": {
+        "name": "Artistic Creativity",
+        "description": "Natural talent for visual arts, design, and creative expression",
+        "indicators": ["visual thinking", "color sensitivity", "creative problem solving", "imagination"],
+        "activities": ["drawing", "painting", "sculpture", "digital art", "crafts"],
+        "careers": ["artist", "designer", "architect", "animator", "photographer"]
+    },
+    "musical_rhythm": {
+        "name": "Musical Rhythm",
+        "description": "Natural ability to understand and create music",
+        "indicators": ["rhythm awareness", "pitch recognition", "musical memory", "emotional response to music"],
+        "activities": ["singing", "playing instruments", "dancing", "music composition", "rhythm games"],
+        "careers": ["musician", "composer", "music teacher", "sound engineer", "performer"]
+    },
+    "logical_mathematics": {
+        "name": "Logical Mathematics",
+        "description": "Strong analytical and mathematical thinking",
+        "indicators": ["pattern recognition", "logical reasoning", "number sense", "problem solving"],
+        "activities": ["puzzles", "math games", "coding", "science experiments", "strategy games"],
+        "careers": ["engineer", "scientist", "mathematician", "programmer", "analyst"]
+    },
+    "sports_movement": {
+        "name": "Sports & Movement",
+        "description": "Natural athletic ability and physical coordination",
+        "indicators": ["coordination", "balance", "speed", "strength", "teamwork"],
+        "activities": ["sports", "dance", "gymnastics", "martial arts", "outdoor activities"],
+        "careers": ["athlete", "coach", "physical therapist", "fitness trainer", "dance instructor"]
+    },
+    "language_communication": {
+        "name": "Language & Communication",
+        "description": "Strong verbal and written communication skills",
+        "indicators": ["vocabulary", "storytelling", "reading comprehension", "verbal expression"],
+        "activities": ["reading", "writing", "storytelling", "debate", "public speaking"],
+        "careers": ["writer", "journalist", "teacher", "lawyer", "public relations"]
+    },
+    "social_leadership": {
+        "name": "Social Leadership",
+        "description": "Natural leadership and social skills",
+        "indicators": ["empathy", "teamwork", "leadership", "conflict resolution", "social awareness"],
+        "activities": ["group activities", "team sports", "community service", "leadership roles"],
+        "careers": ["manager", "teacher", "counselor", "politician", "entrepreneur"]
+    },
+    "scientific_discovery": {
+        "name": "Scientific Discovery",
+        "description": "Curiosity and analytical thinking about the natural world",
+        "indicators": ["curiosity", "observation", "experimentation", "critical thinking"],
+        "activities": ["science experiments", "nature exploration", "building models", "research projects"],
+        "careers": ["scientist", "researcher", "doctor", "veterinarian", "environmentalist"]
+    },
+    "technology_innovation": {
+        "name": "Technology & Innovation",
+        "description": "Interest in technology and innovative problem solving",
+        "indicators": ["tech curiosity", "problem solving", "innovation", "adaptability"],
+        "activities": ["coding", "robotics", "electronics", "gaming", "app development"],
+        "careers": ["software engineer", "data scientist", "product manager", "entrepreneur", "researcher"]
+    }
+}
+
+def analyze_talent_responses(responses: List[QuestionResponse], child: Child) -> Dict[str, Any]:
+    """
+    Analyze question responses to detect talent domains and generate assessment
+    """
+    if not responses:
+        return _generate_default_assessment(child)
+    
+    # Calculate age
+    age = int((datetime.now() - child.date_of_birth).days / 365.25)
+    
+    # Initialize talent domain scores
+    talent_scores = {domain: 0.0 for domain in TALENT_DOMAINS.keys()}
+    response_count = {domain: 0 for domain in TALENT_DOMAINS.keys()}
+    
+    # Analyze each response
+    total_response_time = 0
+    confidence_scores = []
+    
+    for response in responses:
+        if response.talent_indicators and "domain" in response.talent_indicators:
+            domain = response.talent_indicators["domain"]
+            if domain in talent_scores:
+                # Add score (normalize to 0-1 range)
+                score = response.score or 0.5
+                talent_scores[domain] += score
+                response_count[domain] += 1
+        
+        # Track response patterns
+        if response.response_time:
+            total_response_time += response.response_time
+        if response.confidence_level:
+            confidence_scores.append(response.confidence_level)
+    
+    # Calculate average scores for each domain
+    for domain in talent_scores:
+        if response_count[domain] > 0:
+            talent_scores[domain] = talent_scores[domain] / response_count[domain]
+        else:
+            # Use child's initial interests as a hint
+            if child.initial_interests:
+                for interest in child.initial_interests:
+                    if _interest_matches_domain(interest, domain):
+                        talent_scores[domain] = 0.6  # Moderate interest
+    
+    # Determine primary and secondary talents
+    sorted_talents = sorted(talent_scores.items(), key=lambda x: x[1], reverse=True)
+    primary_talent = sorted_talents[0][0] if sorted_talents[0][1] > 0.5 else None
+    secondary_talents = [talent[0] for talent in sorted_talents[1:4] if talent[1] > 0.4]
+    
+    # Calculate confidence score
+    confidence_score = _calculate_confidence_score(responses, talent_scores)
+    
+    # Analyze behavioral patterns
+    behavioral_patterns = _analyze_behavioral_patterns(responses, total_response_time, confidence_scores)
+    
+    # Analyze response patterns
+    response_patterns = _analyze_response_patterns(responses)
+    
+    # Generate interest indicators
+    interest_indicators = _generate_interest_indicators(child, talent_scores)
+    
+    # Generate recommendations
+    recommended_activities = _generate_recommendations(primary_talent, secondary_talents, age)
+    
+    # Generate development path
+    development_path = _generate_development_path(primary_talent, age)
+    
+    return {
+        "talent_domains": talent_scores,
+        "primary_talent": primary_talent,
+        "secondary_talents": secondary_talents,
+        "confidence_score": confidence_score,
+        "behavioral_patterns": behavioral_patterns,
+        "response_patterns": response_patterns,
+        "interest_indicators": interest_indicators,
+        "recommended_activities": recommended_activities,
+        "development_path": development_path
+    }
+
+def _interest_matches_domain(interest: str, domain: str) -> bool:
+    """Check if an interest matches a talent domain"""
+    interest_lower = interest.lower()
+    domain_info = TALENT_DOMAINS.get(domain, {})
+    
+    # Check against domain activities
+    for activity in domain_info.get("activities", []):
+        if activity.lower() in interest_lower:
+            return True
+    
+    # Check against domain indicators
+    for indicator in domain_info.get("indicators", []):
+        if indicator.lower() in interest_lower:
+            return True
+    
+    return False
+
+def _calculate_confidence_score(responses: List[QuestionResponse], talent_scores: Dict[str, float]) -> float:
+    """Calculate confidence in the assessment"""
+    if not responses:
+        return 0.3
+    
+    # Factors affecting confidence:
+    # 1. Number of responses
+    response_factor = min(len(responses) / 10.0, 1.0)
+    
+    # 2. Consistency of scores
+    score_variance = np.var(list(talent_scores.values()))
+    consistency_factor = max(0, 1 - score_variance)
+    
+    # 3. Response quality (confidence levels)
+    avg_confidence = 0.5  # Default
+    if any(r.confidence_level for r in responses):
+        confidences = [r.confidence_level for r in responses if r.confidence_level]
+        avg_confidence = sum(confidences) / len(confidences) / 10.0
+    
+    # Weighted average
+    confidence_score = (response_factor * 0.4 + consistency_factor * 0.4 + avg_confidence * 0.2)
+    return min(confidence_score, 1.0)
+
+def _analyze_behavioral_patterns(responses: List[QuestionResponse], total_response_time: float, confidence_scores: List[float]) -> Dict[str, Any]:
+    """Analyze behavioral patterns from responses"""
+    patterns = {
+        "response_speed": "normal",
+        "confidence_level": "moderate",
+        "engagement_level": "moderate",
+        "consistency": "moderate"
+    }
+    
+    if responses:
+        avg_response_time = total_response_time / len(responses)
+        if avg_response_time < 10:
+            patterns["response_speed"] = "fast"
+        elif avg_response_time > 30:
+            patterns["response_speed"] = "slow"
+        
+        if confidence_scores:
+            avg_confidence = sum(confidence_scores) / len(confidence_scores)
+            if avg_confidence > 7:
+                patterns["confidence_level"] = "high"
+            elif avg_confidence < 4:
+                patterns["confidence_level"] = "low"
+    
+    return patterns
+
+def _analyze_response_patterns(responses: List[QuestionResponse]) -> Dict[str, Any]:
+    """Analyze response patterns and consistency"""
+    patterns = {
+        "total_responses": len(responses),
+        "response_consistency": "moderate",
+        "learning_curve": "stable"
+    }
+    
+    if len(responses) >= 5:
+        # Check for improvement over time
+        recent_scores = [r.score for r in responses[-5:] if r.score]
+        early_scores = [r.score for r in responses[:5] if r.score]
+        
+        if recent_scores and early_scores:
+            recent_avg = sum(recent_scores) / len(recent_scores)
+            early_avg = sum(early_scores) / len(early_scores)
+            
+            if recent_avg > early_avg * 1.2:
+                patterns["learning_curve"] = "improving"
+            elif recent_avg < early_avg * 0.8:
+                patterns["learning_curve"] = "declining"
+    
+    return patterns
+
+def _generate_interest_indicators(child: Child, talent_scores: Dict[str, float]) -> Dict[str, Any]:
+    """Generate interest indicators based on child data and talent scores"""
+    indicators = {
+        "strong_interests": [],
+        "moderate_interests": [],
+        "potential_interests": []
+    }
+    
+    # Add interests from child profile
+    if child.initial_interests:
+        indicators["strong_interests"].extend(child.initial_interests)
+    
+    if child.favorite_activities:
+        indicators["moderate_interests"].extend(child.favorite_activities)
+    
+    # Add interests based on talent scores
+    for domain, score in talent_scores.items():
+        if score > 0.7:
+            domain_info = TALENT_DOMAINS.get(domain, {})
+            indicators["strong_interests"].extend(domain_info.get("activities", [])[:2])
+        elif score > 0.5:
+            domain_info = TALENT_DOMAINS.get(domain, {})
+            indicators["moderate_interests"].extend(domain_info.get("activities", [])[:1])
+    
+    return indicators
+
+def _generate_recommendations(primary_talent: str, secondary_talents: List[str], age: int) -> List[str]:
+    """Generate activity recommendations based on detected talents"""
+    recommendations = []
+    
+    if primary_talent and primary_talent in TALENT_DOMAINS:
+        domain_info = TALENT_DOMAINS[primary_talent]
+        recommendations.extend(domain_info.get("activities", [])[:3])
+    
+    for talent in secondary_talents[:2]:  # Limit to 2 secondary talents
+        if talent in TALENT_DOMAINS:
+            domain_info = TALENT_DOMAINS[talent]
+            recommendations.extend(domain_info.get("activities", [])[:2])
+    
+    # Add age-appropriate activities
+    age_activities = _get_age_appropriate_activities(age)
+    recommendations.extend(age_activities[:3])
+    
+    return list(set(recommendations))  # Remove duplicates
+
+def _generate_development_path(primary_talent: str, age: int) -> Dict[str, Any]:
+    """Generate a development path for the child's primary talent"""
+    if not primary_talent or primary_talent not in TALENT_DOMAINS:
+        return {"current_stage": "exploration", "next_steps": ["try different activities"]}
+    
+    domain_info = TALENT_DOMAINS[primary_talent]
+    
+    # Define development stages based on age
+    if age < 6:
+        stage = "discovery"
+        focus = "exploration and play"
+    elif age < 9:
+        stage = "development"
+        focus = "skill building and practice"
+    else:
+        stage = "refinement"
+        focus = "advanced techniques and specialization"
+    
+    return {
+        "current_stage": stage,
+        "focus_area": focus,
+        "primary_talent": domain_info["name"],
+        "career_paths": domain_info.get("careers", []),
+        "next_steps": domain_info.get("activities", [])[:3]
+    }
+
+def _get_age_appropriate_activities(age: int) -> List[str]:
+    """Get age-appropriate activities"""
+    if age < 5:
+        return ["coloring", "building blocks", "singing", "dancing", "outdoor play"]
+    elif age < 8:
+        return ["arts and crafts", "music lessons", "sports", "reading", "puzzles"]
+    else:
+        return ["advanced art projects", "instrument practice", "team sports", "writing", "science projects"]
+
+def _generate_default_assessment(child: Child) -> Dict[str, Any]:
+    """Generate a default assessment when no responses are available"""
+    return {
+        "talent_domains": {domain: 0.3 for domain in TALENT_DOMAINS.keys()},
+        "primary_talent": None,
+        "secondary_talents": [],
+        "confidence_score": 0.2,
+        "behavioral_patterns": {"response_speed": "unknown", "confidence_level": "unknown"},
+        "response_patterns": {"total_responses": 0, "response_consistency": "unknown"},
+        "interest_indicators": {
+            "strong_interests": child.initial_interests or [],
+            "moderate_interests": child.favorite_activities or [],
+            "potential_interests": []
+        },
+        "recommended_activities": _get_age_appropriate_activities(int((datetime.now() - child.date_of_birth).days / 365.25)),
+        "development_path": {"current_stage": "exploration", "next_steps": ["start assessments"]}
+    }
 
 class PassionDetector:
     """Machine learning system for detecting children's passions and talents"""

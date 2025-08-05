@@ -13,8 +13,6 @@ class ChildBase(BaseModel):
     learning_style: Optional[str] = None
 
 class ChildCreate(ChildBase):
-    parent_id: int
-    
     @validator('date_of_birth')
     def validate_age(cls, v):
         age = (datetime.now() - v).days / 365.25
